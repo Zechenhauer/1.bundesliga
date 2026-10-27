@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>1. Bundesliga PRO Dashboard — Live & Push</title>
     
-    <!-- OneSignal SDK für den stabilen Push-Dienst mit korrigiertem Scope für GitHub Pages -->
+    <!-- OneSignal SDK für den stabilen Push-Dienst -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -13,7 +13,8 @@
         await OneSignal.init({
           appId: "30528bc1-cf0a-475d-bc60-12bd4bf0b7b9",
           safari_web_id: "",
-          serviceWorkerPath: "OneSignalSDKWorker.js",
+          // Hier binden wir den Worker für GitHub Pages mit absolutem Pfad im Unterordner ein:
+          serviceWorkerPath: "1.bundesliga/OneSignalSDKWorker.js",
           serviceWorkerParam: { scope: "/1.bundesliga/" },
           notifyButton: {
             enable: true,
