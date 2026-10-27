@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>1. Bundesliga PRO Dashboard — Live & Push</title>
     
-    <!-- OneSignal SDK für den stabilen Push-Dienst -->
+    <!-- OneSignal SDK ohne externen Worker -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -13,9 +13,8 @@
         await OneSignal.init({
           appId: "30528bc1-cf0a-475d-bc60-12bd4bf0b7b9",
           safari_web_id: "",
-          // Hier binden wir den Worker für GitHub Pages mit absolutem Pfad im Unterordner ein:
-          serviceWorkerPath: "1.bundesliga/OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/1.bundesliga/" },
+          // Verhindert den Root-Scope-Fehler in Unterordnern
+          allowLocalhostAsSecureOrigin: true,
           notifyButton: {
             enable: true,
             size: 'medium',
@@ -630,7 +629,7 @@
                         if (s.rank <= 4) zoneClass = "cl-zone";
                         else if (s.rank === 5 || s.rank === 6) zoneClass = "el-zone";
                         else if (s.rank === 16) zoneClass = "relegation-zone";
-                        else if (s.rank >= 17) zoneClass = "reflux-zone";
+                        else if (s.rank >= 17) zoneClass, zoneClass = "reflux-zone";
 
                         html += `<tr class="${zoneClass}">
                             <td><b>${s.rank}</b></td>
