@@ -13,9 +13,9 @@
         await OneSignal.init({
           appId: "30528bc1-cf0a-475d-bc60-12bd4bf0b7b9",
           safari_web_id: "",
-          // Zwingt OneSignal, den Worker direkt im aktuellen Unterordner zu suchen
-          serviceWorkerPath: "OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/1.bundesliga/" },
+          // Verhindert, dass OneSignal das Root-Verzeichnis erzwingt
+          path: "/1.bundesliga/",
+          allowLocalhostAsSecureOrigin: true,
           notifyButton: {
             enable: true,
             size: 'medium',
