@@ -915,10 +915,24 @@
                         const home = m.teams.home;
                         const away = m.teams.away;
                         const goalsHome = m.goals.home ?? 0;
-                        const goalsAway = m.goals.get ?? 0; // standard
+                        const goalsAway = m.goals.away ?? 0; // KORRIGIERT VON m.goals.get auf m.goals.away
 
                         let isLive = ["1H", "2H", "ET", "P", "HT"].includes(m.fixture.status.short);
-                        if (isLive) hasLiveGames = true;
+                        if (isLive) {
+                            hasLiveGames = true;
+                            // Polling / Tor-Überprüfung bei Live-Spielen aufrufen
+                            let latestScorer = "";
+                            let scoringTeam = "";
+                            if (events && events.length > 0) {
+                                let goalEvents = events.filter(ev => ev.type === 'Goal');
+                                if (goalEvents.length > 0) {
+                                    let lastGoal = goalEvents[goalEvents.length - 1];
+                                    latestScorer = `${lastGoal.player?.name || ''} (${lastGoal.time?.elapsed || ''}')`;
+                                    scoringTeam = lastGoal.team?.id === home.id ? home.name : away.name;
+                                }
+                            }
+                            checkAllGoalsAndNotify(home.name, away.name, goalsHome, goalsAway, latestScorer, fixtureId, scoringTeam);
+                        }
 
                         let displayHome = m.goals.home !== null ? m.goals.home : "-";
                         let displayAway = m.goals.away !== null ? m.goals.away : "-";
