@@ -953,7 +953,7 @@
                         tickerHtml += `<span class="ticker-item ${isBayernMatch ? 'bayern-ticker' : ''}"><img src="${home.logo}" class="ticker-team-logo">${home.name} <span class="ticker-score">${displayHome}:${displayAway}</span> ${away.name} <img src="${away.logo}" class="ticker-team-logo"></span>`;
 
                         let matchTimelineHtml = "";
-                        let relevantTimelineEvents = events.filter(ev => ['Goal', 'Card', 'subst'].includes(ev.type));
+                        let relevantTimelineEvents = events.filter(ev => ['Goal', 'Card'].includes(ev.type));
                         
                         if (relevantTimelineEvents.length > 0) {
                             matchTimelineHtml = `<div class="match-timeline-preview"><div class="match-timeline-axis"></div><div class="match-timeline-nodes">`;
