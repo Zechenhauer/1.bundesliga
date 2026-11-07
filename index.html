@@ -101,7 +101,6 @@
         .match-timeline-nodes { display: flex; gap: 18px; position: relative; z-index: 2; padding: 0 5px; width: max-content; align-items: flex-start; }
         .match-timeline-node { display: flex; flex-direction: column; align-items: center; text-align: center; width: 84px; flex-shrink: 0; }
         
-        /* Spezielles Design für Tor-Knoten in der Timeline mit Spielstand-Badge */
         .match-timeline-node.is-goal .match-timeline-player-img { border: 2px solid var(--accent-color); box-shadow: 0 0 10px rgba(0, 255, 135, 0.6); }
         .match-timeline-node.is-goal .match-timeline-badge-mini { background: var(--accent-color); color: #000; font-weight: bold; font-size: 0.65rem; width: auto; padding: 0 6px; border-radius: 10px; bottom: -4px; right: -12px; box-shadow: 0 0 6px rgba(0, 255, 135, 0.8); white-space: nowrap; }
         .match-timeline-node.is-goal .match-timeline-player { color: var(--accent-color); text-shadow: 0 0 4px rgba(0, 255, 135, 0.3); }
@@ -146,13 +145,11 @@
         .modal-teams { display: flex; justify-content: space-around; align-items: center; font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
         .modal-teams img { width: 35px; height: 35px; object-fit: contain; }
         
-        /* Grafische Timeline Styles im Modal */
         .timeline-wrapper { position: relative; margin: 25px 0 15px 0; padding: 15px 10px; overflow-x: auto; background: #161b22; border-radius: 8px; border: 1px solid var(--border-color); }
         .timeline-axis { position: absolute; top: 58px; left: 20px; right: 20px; height: 3px; background: var(--border-color); z-index: 1; }
         .timeline-nodes { display: flex; gap: 25px; position: relative; z-index: 2; padding: 0 10px; width: max-content; align-items: flex-start; }
         .timeline-node { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100px; flex-shrink: 0; }
         
-        /* Spezielles Design für Tor-Knoten im Modal mit Spielstand-Badge */
         .timeline-node.is-goal .timeline-player-img { border: 2px solid var(--accent-color); box-shadow: 0 0 12px rgba(0, 255, 135, 0.7); }
         .timeline-node.is-goal .timeline-badge-mini { background: var(--accent-color); color: #000; font-weight: bold; font-size: 0.7rem; width: auto; padding: 0 8px; border-radius: 10px; bottom: -4px; right: -15px; box-shadow: 0 0 8px rgba(0, 255, 135, 0.9); white-space: nowrap; }
         .timeline-node.is-goal .timeline-player { color: var(--accent-color); text-shadow: 0 0 6px rgba(0, 255, 135, 0.4); }
@@ -319,7 +316,7 @@
         let globalTopScorers = [];
         let globalTopAssists = [];
         let globalYellowCards = [];
-        let previousScores = {};
+        let previousScores = JSON.parse(localStorage.getItem('bl_previous_scores') || '{}');
         let smartPollingInterval = null;
         let isLivePollingEnabled = false;
         let recentGoalsList = JSON.parse(localStorage.getItem('bl_recent_goals_cache') || '[]');
@@ -915,12 +912,27 @@
                         const home = m.teams.home;
                         const away = m.teams.away;
                         const goalsHome = m.goals.home ?? 0;
-                        const goalsAway = m.goals.away ?? 0; // KORRIGIERT VON m.goals.get auf m.goals.away
+                        const goalsAway = m.goals.away ?? 0;
 
                         let isLive = ["1H", "2H", "ET", "P", "HT"].includes(m.fixture.status.short);
                         if (isLive) {
                             hasLiveGames = true;
-                            // Polling / Tor-Überprüfung bei Live-Spielen aufrufen
+                            
+                            // --- NEU: PRÜFUNG AUF VAR-KORREKTUR (SPIELSTAND SINKT) ---
+                            let prevKey = `match_${fixtureId}`;
+                            if (previousScores[prevKey]) {
+                                let prevHome = previousScores[prevKey].home;
+                                let prevAway = previousScores[prevKey].away;
+                                
+                                if ((goalsHome + goalsAway) < (prevHome + prevAway)) {
+                                    // Spielstand ist nach unten gegangen -> Tor wurde nach VAR zurückgenommen!
+                                    recordVarCorrectionAndNotify(fixtureId, home.name, away.name, goalsHome, goalsAway);
+                                }
+                            }
+                            previousScores[prevKey] = { home: goalsHome, away: goalsAway };
+                            localStorage.setItem('bl_previous_scores', JSON.stringify(previousScores));
+                            // ---------------------------------------------------------
+
                             let latestScorer = "";
                             let scoringTeam = "";
                             if (events && events.length > 0) {
@@ -943,7 +955,6 @@
                         let isBayernMatch = home.name.includes("Bayern") || away.name.includes("Bayern");
                         tickerHtml += `<span class="ticker-item ${isBayernMatch ? 'bayern-ticker' : ''}"><img src="${home.logo}" class="ticker-team-logo">${home.name} <span class="ticker-score">${displayHome}:${displayAway}</span> ${away.name} <img src="${away.logo}" class="ticker-team-logo"></span>`;
 
-                        // 1. MINI-TIMELINE DIREKT UNTER DEM SPIEL (TORE MIT MITLAUFENDEM SPIELSTAND)
                         let matchTimelineHtml = "";
                         let relevantTimelineEvents = events.filter(ev => ['Goal', 'Card', 'subst'].includes(ev.type));
                         
@@ -1001,7 +1012,6 @@
                             matchTimelineHtml += `</div></div>`;
                         }
 
-                        // 2. ALTBEKANNTE TORSCHÜTZEN-LISTE DARUNTER (NUR TORE)
                         let scorersHtml = "";
                         let goalEvents = events.filter(ev => ev.type === 'Goal');
                         if (goalEvents.length > 0) {
@@ -1067,7 +1077,6 @@
                     document.getElementById("modalStatus").textContent = `Status: ${match.fixture.status.long}`;
                     if(match.fixture.referee) document.getElementById("modalReferee").textContent = `👨‍⚖️ Schiedsrichter: ${match.fixture.referee}`;
 
-                    // --- GRAFISCHE TIMELINE IM MODAL (MIT TOREN & SPIELSTAND) ---
                     let timelineHtml = "Keine Ereignisse vorhanden.";
                     if (match.events && match.events.length > 0) {
                         let filteredEvents = match.events.filter(ev => ['Goal', 'Card', 'subst'].includes(ev.type));
