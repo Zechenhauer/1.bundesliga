@@ -1160,10 +1160,9 @@
                             let teamEvents = (match.events || []).filter(ev => ev.team.id === teamObj.id);
                             
                             let subsEvents = teamEvents.filter(ev => ev.type === 'subst').map(ev => {
-                                let pInPhoto = getPlayerPhotoHtml(ev.assist?.id || ev.player.id, '16px');
+                                let pInPhoto = getPlayerPhotoHtml(ev.assist?.id, '16px');
                                 let pOutPhoto = getPlayerPhotoHtml(ev.player?.id, '16px');
-                                return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">🔄 ${ev.time.elapsed}' Ein: ${pInPhoto}${ev.player.name} | Aus: ${pOutPhoto}${ev.assist.name}</div>`;
-                            }).join("");
+                                return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">🔄 ${ev.time.elapsed}' Ein: ${pInPhoto}${ev.assist?.name || ''} | Aus: ${pOutPhoto}${ev.player?.name || ''}</div>`;
                             
                             let cardsEvents = teamEvents.filter(ev => ev.type === 'Card').map(ev => {
                                 let detail = (ev.detail || '').toLowerCase();
