@@ -529,7 +529,7 @@
                 smartPollingInterval = null;
             }
 
-            const pollingIntervalTime = hasLiveGames ? 60000 : 180000;
+            const pollingIntervalTime = hasLiveGames ? 30000 : 120000;
 
             smartPollingInterval = setInterval(() => {
                 if (currentMatchday) {
