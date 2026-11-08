@@ -138,7 +138,7 @@
 
         /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-        .modal-content { background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; width: 100%; max-width: 750px; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; }
+        .modal-content { background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; padding: 25px; position: relative; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; background: none; border: none; }
         .close-btn:hover { color: var(--text-main); }
         .modal-header { text-align: center; margin-bottom: 20px; }
@@ -166,6 +166,17 @@
         .stat-bar-container { display: flex; height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; gap: 2px; }
         .stat-bar-home { background: var(--accent-color); height: 100%; transition: width 0.3s; }
         .stat-bar-away { background: #388bfd; height: 100%; transition: width 0.3s; }
+
+        /* Zusätzliche Klassen für Team-Statistik Kacheln & Kader-Tabellen */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-top: 10px; }
+        .stat-card { background: #1f242c; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; }
+        .stat-card h4 { color: var(--accent-color); margin-bottom: 10px; font-size: 0.95rem; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .stat-card-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 4px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); color: var(--text-muted); }
+        .stat-card-row b { color: var(--text-main); }
+        .sort-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .team-section { margin-bottom: 20px; background: #161b22; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .player-row { display: flex; align-items: center; gap: 6px; }
+        .player-row img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -322,6 +333,7 @@
         let recentGoalsList = JSON.parse(localStorage.getItem('bl_recent_goals_cache') || '[]');
 
         let playerPhotoCache = JSON.parse(localStorage.getItem('bl_player_photo_cache') || '{}');
+        let cachedTeamPlayersData = []; // Cache für die Kader-Saisonstatistik eines Teams
 
         function cachePlayerPhoto(playerId, photoUrl) {
             if (playerId && photoUrl && !playerPhotoCache[playerId]) {
@@ -674,15 +686,18 @@
         async function openTeamStats(teamId, teamName, teamLogo) {
             document.getElementById("teamStatsModal").style.display = "flex";
             document.getElementById("teamStatsHeader").innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><img src="${teamLogo}" style="width:30px; height:30px; object-fit:contain;"><span>Saisonstatistik: ${teamName}</span></div>`;
-            document.getElementById("teamStatsContent").innerHTML = "Lade Team-Daten, Stammdaten, Trainer, Kader & Trophäen...";
+            document.getElementById("teamStatsContent").innerHTML = "Lade Team-Werte, erweiterte Team-Stats & Kader-Statistiken...";
+
+            cachedTeamPlayersData = []; // Zurücksetzen für neues Team
 
             try {
-                const [statsRes, teamInfoRes, coachRes, squadRes, trophiesRes] = await Promise.all([
+                const [statsRes, teamInfoRes, coachRes, squadRes, trophiesRes, playersRes] = await Promise.all([
                     fetch(`https://v3.football.api-sports.io/teams/statistics?league=${leagueId}&season=${season}&team=${teamId}`, { headers: { "x-apisports-key": apiKey } }),
                     fetch(`https://v3.football.api-sports.io/teams?id=${teamId}`, { headers: { "x-apisports-key": apiKey } }),
                     fetch(`https://v3.football.api-sports.io/coachs?team=${teamId}`, { headers: { "x-apisports-key": apiKey } }),
                     fetch(`https://v3.football.api-sports.io/players/squads?team=${teamId}`, { headers: { "x-apisports-key": apiKey } }),
-                    fetch(`https://v3.football.api-sports.io/trophies?team=${teamId}`, { headers: { "x-apisports-key": apiKey } })
+                    fetch(`https://v3.football.api-sports.io/trophies?team=${teamId}`, { headers: { "x-apisports-key": apiKey } }),
+                    fetch(`https://v3.football.api-sports.io/players?league=${leagueId}&season=${season}&team=${teamId}&page=1`, { headers: { "x-apisports-key": apiKey } })
                 ]);
 
                 const statsData = await statsRes.json();
@@ -690,6 +705,7 @@
                 const coachData = await coachRes.json();
                 const squadData = await squadRes.json();
                 const trophiesData = await trophiesRes.json();
+                const playersData = await playersRes.json();
 
                 let html = "";
 
@@ -722,47 +738,89 @@
 
                 if (statsData.response) {
                     const st = statsData.response;
-                    let formStr = st.form || "N/V";
-                    let cleanSheets = st.clean_sheet?.total || 0;
-                    let failedToScore = st.failed_to_score?.total || 0;
-                    let homeWins = st.fixtures?.wins?.home || 0;
-                    let homeDraws = st.fixtures?.draws?.home || 0;
-                    let homeLoses = st.fixtures?.loses?.home || 0;
-                    let awayWins = st.fixtures?.wins?.away || 0;
-                    let awayDraws = st.fixtures?.draws?.away || 0;
-                    let awayLoses = st.fixtures?.loses?.away || 0;
+                    let fixtures = st.fixtures || {};
+                    let goals = st.goals || {};
+                    let cleanSheet = st.clean_sheet || {};
+                    let failedToScore = st.failed_to_score || {};
+                    let cards = st.cards || {};
 
+                    // Berechnung Gesamtkarten aus den Zeitfenstern
+                    let totalYellow = 0;
+                    if (cards.yellow) {
+                        for (let key in cards.yellow) {
+                            totalYellow += (cards.yellow[key]?.total || 0);
+                        }
+                    }
+                    let totalRed = 0;
+                    if (cards.red) {
+                        for (let key in cards.red) {
+                            totalRed += (cards.red[key]?.total || 0);
+                        }
+                    }
+
+                    // ERWEITERTE TEAM-STATISTIKEN (Kachel-Ansicht aus Screenshot 2)
                     html += `
-                        <h3 style="font-size:1rem; color:var(--accent-color); margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">3. Saisondaten & Statistiken</h3>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:15px;">
-                            <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
-                                <div style="color:var(--text-muted); font-size:0.8rem;">Formkurve</div>
-                                <div style="font-size:1rem; font-weight:bold; color:var(--accent-color); margin-top:4px;">${formStr}</div>
+                        <h3 style="font-size:1rem; color:var(--accent-color); margin:15px 0 8px 0; border-bottom:1px solid var(--border-color); padding-bottom:4px;">2. Erweiterte Team-Statistiken</h3>
+                        <div class="stats-grid" style="margin-bottom:15px;">
+                            <div class="stat-card">
+                                <h4>📊 Form & Spiele</h4>
+                                <div class="stat-card-row"><span>Aktuelle Form:</span> <b>${st.form || '-'}</b></div>
+                                <div class="stat-card-row"><span>Spiele gesamt:</span> <b>${fixtures.played?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Siege:</span> <span style="color:#2ea043; font-weight:bold;">${fixtures.wins?.total ?? 0}</span></div>
+                                <div class="stat-card-row"><span>Unentschieden:</span> <b>${fixtures.draws?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Niederlagen:</span> <span style="color:#da3633; font-weight:bold;">${fixtures.loses?.total ?? 0}</span></div>
                             </div>
-                            <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
-                                <div style="color:var(--text-muted); font-size:0.8rem;">Heimbilanz (S-U-N)</div>
-                                <div style="font-size:1rem; font-weight:bold; margin-top:4px;">${homeWins} - ${homeDraws} - ${homeLoses}</div>
+
+                            <div class="stat-card">
+                                <h4>🏠 Heim- / Auswärtsbilanz</h4>
+                                <div class="stat-card-row"><span>Heim-Siege:</span> <b>${fixtures.wins?.home ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Heim-Niederlagen:</span> <b>${fixtures.loses?.home ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Auswärts-Siege:</span> <b>${fixtures.wins?.away ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Auswärts-Niederlagen:</span> <b>${fixtures.loses?.away ?? 0}</b></div>
                             </div>
-                            <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
-                                <div style="color:var(--text-muted); font-size:0.8rem;">Auswärtsbilanz (S-U-N)</div>
-                                <div style="font-size:1rem; font-weight:bold; margin-top:4px;">${awayWins} - ${awayDraws} - ${awayLoses}</div>
+
+                            <div class="stat-card">
+                                <h4>⚽ Tore & Offensive</h4>
+                                <div class="stat-card-row"><span>Erzielte Tore gesamt:</span> <b>${goals.for?.total?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Tore pro Spiel (Schnitt):</span> <b>${goals.for?.average?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Ohne eigenen Torerfolg:</span> <b>${failedToScore.total ?? 0}</b></div>
                             </div>
-                            <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color);">
-                                <div style="color:var(--text-muted); font-size:0.8rem;">Clean Sheets / Ohne Tor</div>
-                                <div style="font-size:1rem; font-weight:bold; margin-top:4px;">${cleanSheets} / ${failedToScore}</div>
+
+                            <div class="stat-card">
+                                <h4>🛡️ Defensive & Zu-Null</h4>
+                                <div class="stat-card-row"><span>Kassierte Tore gesamt:</span> <b>${goals.against?.total?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Gegentore pro Spiel (Schnitt):</span> <b>${goals.against?.average?.total ?? 0}</b></div>
+                                <div class="stat-card-row"><span>Zu-Null-Spiele (Clean Sheets):</span> <b style="color:var(--accent-color);">${cleanSheet.total ?? 0}</b></div>
+                            </div>
+
+                            <div class="stat-card">
+                                <h4>🟨 Disziplin (Karten)</h4>
+                                <div class="stat-card-row"><span>Gelbe Karten (Gesamt):</span> <b>${totalYellow}</b></div>
+                                <div class="stat-card-row"><span>Rote Karten (Gesamt):</span> <b>${totalRed}</b></div>
                             </div>
                         </div>
                     `;
+                }
 
-                    if (st.goals && st.goals.for && st.goals.for.minute) {
-                        html += `<h4 style="font-size:0.9rem; color:var(--accent-color); margin:10px 0 5px 0;">Tor-Verteilung nach Minuten</h4>`;
-                        html += `<table><tr><th>Minute</th><th class="center">Tore</th><th class="center">%</th></tr>`;
-                        for (let min in st.goals.for.minute) {
-                            let obj = st.goals.for.minute[min];
-                            html += `<tr><td><b>${min}</b></td><td class="center">${obj.total ?? 0}</td><td class="center">${obj.percentage || '0%'}</td></tr>`;
-                        }
-                        html += `</table><br>`;
-                    }
+                // KADER-SAISONSTATISTIK (Tabelle aus Screenshot 1)
+                if (playersData.response && playersData.response.length > 0) {
+                    cachedTeamPlayersData = playersData.response;
+                    cachedTeamPlayersData.sort((a, b) => (b.statistics[0].games.rating || 0) - (a.statistics[0].games.rating || 0));
+
+                    html += `
+                        <h3 style="font-size:1rem; color:var(--accent-color); margin:15px 0 8px 0; border-bottom:1px solid var(--border-color); padding-bottom:4px;">3. Saison-Gesamtstatistik (Kader)</h3>
+                        <div class="sort-bar" style="margin-top:10px;">
+                            <span style="font-size:0.85rem; color:var(--text-muted);">Sortieren nach:</span>
+                            <div style="display:flex; gap:8px;">
+                                <button id="sortRatingBtn" style="padding:5px 10px; font-size:0.8rem; background:var(--accent-color); color:#000; font-weight:bold;" onclick="renderTeamPlayerStats('rating')">⭐ Ø Note</button>
+                                <button id="sortGoalsBtn" style="padding:5px 10px; font-size:0.8rem; background:#21262d; color:#fff;" onclick="renderTeamPlayerStats('goals')">⚽ Tore</button>
+                                <button id="sortGamesBtn" style="padding:5px 10px; font-size:0.8rem; background:#21262d; color:#fff;" onclick="renderTeamPlayerStats('games')">👕 Spiele</button>
+                            </div>
+                        </div>
+                        <div class="team-section" id="teamPlayerTableContainer">
+                            ${buildPlayerTableHtml(cachedTeamPlayersData, 'rating')}
+                        </div>
+                    `;
                 }
 
                 if (squadData.response && squadData.response.length > 0) {
@@ -773,7 +831,7 @@
                         if (grouped[p.position]) grouped[p.position].push(p);
                     });
 
-                    html += `<h3 style="font-size:1rem; color:var(--accent-color); margin:15px 0 8px 0; border-bottom:1px solid var(--border-color); padding-bottom:4px;">2. Aktueller Kader</h3>`;
+                    html += `<h3 style="font-size:1rem; color:var(--accent-color); margin:15px 0 8px 0; border-bottom:1px solid var(--border-color); padding-bottom:4px;">4. Kompletter Kader</h3>`;
                     
                     const posNames = { Goalkeeper: 'Torhüter', Defender: 'Abwehr', Midfielder: 'Mittelfeld', Attacker: 'Angriff' };
                     for (let pos in grouped) {
@@ -803,6 +861,75 @@
             } catch(e) {
                 document.getElementById("teamStatsContent").innerHTML = "Fehler beim Laden der Team-Statistiken.";
             }
+        }
+
+        function renderTeamPlayerStats(sortBy) {
+            if (!cachedTeamPlayersData || cachedTeamPlayersData.length === 0) return;
+
+            cachedTeamPlayersData.sort((a, b) => {
+                let statA = a.statistics[0];
+                let statB = b.statistics[0];
+                if (sortBy === 'rating') return (statB.games.rating || 0) - (statA.games.rating || 0);
+                if (sortBy === 'goals') return (statB.goals.total || 0) - (statA.goals.total || 0);
+                if (sortBy === 'games') return (statB.games.appearences || 0) - (statA.games.appearences || 0);
+            });
+
+            // Buttons anpassen
+            document.getElementById("sortRatingBtn").style.background = sortBy === 'rating' ? 'var(--accent-color)' : '#21262d';
+            document.getElementById("sortRatingBtn").style.color = sortBy === 'rating' ? '#000' : '#fff';
+            document.getElementById("sortGoalsBtn").style.background = sortBy === 'goals' ? 'var(--accent-color)' : '#21262d';
+            document.getElementById("sortGoalsBtn").style.color = sortBy === 'goals' ? '#000' : '#fff';
+            document.getElementById("sortGamesBtn").style.background = sortBy === 'games' ? 'var(--accent-color)' : '#21262d';
+            document.getElementById("sortGamesBtn").style.color = sortBy === 'games' ? '#000' : '#fff';
+
+            document.getElementById("teamPlayerTableContainer").innerHTML = buildPlayerTableHtml(cachedTeamPlayersData, sortBy);
+        }
+
+        function buildPlayerTableHtml(playersArray, sortBy) {
+            let html = `
+                <table>
+                    <tr>
+                        <th>Spieler</th>
+                        <th class="center">Spiele</th>
+                        <th class="center">Min</th>
+                        <th class="center">Ø Note</th>
+                        <th class="center">Tore</th>
+                        <th class="center">Assists</th>
+                        <th class="center">Gelb</th>
+                        <th class="center">Rot</th>
+                    </tr>
+            `;
+
+            playersArray.forEach(item => {
+                const p = item.player;
+                const st = item.statistics[0];
+                cachePlayerPhoto(p.id, p.photo);
+                let photoHtml = getPlayerPhotoHtml(p.id, '20px');
+
+                let yellowCards = st.cards.yellow ?? 0;
+                let redCards = (st.cards.red || 0) + (st.cards.yellowred || 0);
+
+                html += `
+                    <tr>
+                        <td>
+                            <div class="player-row">
+                                ${photoHtml}
+                                <span><b>${p.name}</b></span>
+                            </div>
+                        </td>
+                        <td class="center" style="color:${sortBy==='games'?'var(--accent-color)':''}">${st.games.appearences ?? 0}</td>
+                        <td class="center">${st.games.minutes ?? 0}</td>
+                        <td class="center" style="font-weight:bold; color:${sortBy==='rating'?'var(--accent-color)':''};">${st.games.rating ? parseFloat(st.games.rating).toFixed(2) : '-'}</td>
+                        <td class="center" style="font-weight:bold; color:${sortBy==='goals'?'var(--accent-color)':''};">${st.goals.total ?? '-'}</td>
+                        <td class="center">${st.goals.assists ?? '-'}</td>
+                        <td class="center">${yellowCards > 0 ? '🟨 ' + yellowCards : '-'}</td>
+                        <td class="center">${redCards > 0 ? '🟥 ' + redCards : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</table>`;
+            return html;
         }
 
         function openTopScorersModal() {
