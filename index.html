@@ -1361,7 +1361,9 @@
             const data = await res.json();
             if(data.response && data.response.length > 0) {
                 const standings = data.response[0].league.standings[0];
-                let html = `<table><tr><th>#</th><th>Team</th><th class="center">Sp</th><th class="center">Tore</th><th class="center">Diff</th><th class="right">Pkt</th></tr>`;
+                
+                // Erweiterte Kopfzeile mit S, U, N
+                let html = `<table><tr><th>#</th><th>Team</th><th class="center">Sp</th><th class="center">S</th><th class="center">U</th><th class="center">N</th><th class="center">Tore</th><th class="center">Diff</th><th class="right">Pkt</th></tr>`;
                 
                 let top3Html = "";
                 for(let i = 0; i < Math.min(3, standings.length); i++) {
@@ -1378,10 +1380,14 @@
                     let diffValue = s.goalsDiff !== undefined ? s.goalsDiff : (s.all.goals.for - s.all.goals.against);
                     let diffFormatted = diffValue > 0 ? '+' + diffValue : diffValue;
                     
+                    // Zeilendaten passend zur neuen Kopfzeile
                     html += `<tr class="table-row ${zoneClass}" onclick="openTeamStats(${s.team.id}, '${s.team.name}', '${s.team.logo}')">
                         <td><b>${s.rank}</b></td>
                         <td><div class="table-team"><img src="${s.team.logo}"><span>${s.team.name}</span></div></td>
                         <td class="center">${s.all.played}</td>
+                        <td class="center">${s.all.win}</td>
+                        <td class="center">${s.all.draw}</td>
+                        <td class="center">${s.all.lose}</td>
                         <td class="center">${s.all.goals.for}:${s.all.goals.against}</td>
                         <td class="center">${diffFormatted}</td>
                         <td class="right"><b>${s.points}</b></td>
@@ -1391,7 +1397,6 @@
             }
         } catch(e) {}
     }
-
     init();
   </script>
 </body>
