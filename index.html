@@ -497,13 +497,18 @@
             }
         }
 
+        const processingGoals = new Set();
+
         async function checkAllGoalsAndNotify(home, away, hScore, aScore, latestScorer, matchId, scoringTeam) {
             if (!latestScorer || latestScorer.includes("Tor") || latestScorer.trim() === "⚽") return;
 
-            let uniqueGoalId = `${matchId}_${hScore}:${aScore}_${latestScorer}`;
-            
             let cleanPlayer = latestScorer.replace(/⚽\s*/, '').replace(/\(\d+['']\)/, '').replace('(Pen)', '').replace('(ET)', '').trim();
             let minStr = latestScorer.match(/\(\d+['']\)/) ? ` ${latestScorer.match(/\(\d+['']\)/)[0]}` : '';
+            
+            // WICHTIG: Die ID wird NUR noch aus Match-ID und Spielstand gebildet!
+            let uniqueGoalId = `${matchId}_${hScore}:${aScore}`;
+            
+            if (processingGoals.has(uniqueGoalId)) return;
 
             let goalObject = {
                 id: uniqueGoalId,
@@ -517,6 +522,8 @@
             }
 
             try {
+                processingGoals.add(uniqueGoalId);
+
                 let { data: existing, error: checkError } = await supabaseClient
                     .from('sent_goals_bl')
                     .select('goal_id')
@@ -543,6 +550,8 @@
                 }
             } catch (e) {
                 console.error("Fehler beim Bundesliga Tor-Cache & Push:", e);
+            } finally {
+                processingGoals.delete(uniqueGoalId);
             }
         }
 
