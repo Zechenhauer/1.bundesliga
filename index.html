@@ -556,7 +556,6 @@
             } catch (e) {
                 console.error("Fehler beim Bundesliga Tor-Cache & Push:", e);
             } finally {
-                processingGoals.delete(uniqueGrade = uniqueGoalId);
                 processingGoals.delete(uniqueGoalId);
             }
         }
@@ -759,7 +758,6 @@
                     let failedToScore = st.failed_to_score || {};
                     let cards = st.cards || {};
 
-                    // Berechnung Gesamtkarten aus den Zeitfenstern
                     let totalYellow = 0;
                     if (cards.yellow) {
                         for (let key in cards.yellow) {
@@ -773,7 +771,6 @@
                         }
                     }
 
-                    // ERWEITERTE TEAM-STATISTIKEN (Kachel-Ansicht aus Screenshot 2)
                     html += `
                         <h3 style="font-size:1rem; color:var(--accent-color); margin:15px 0 8px 0; border-bottom:1px solid var(--border-color); padding-bottom:4px;">2. Erweiterte Team-Statistiken</h3>
                         <div class="stats-grid" style="margin-bottom:15px;">
@@ -817,7 +814,6 @@
                     `;
                 }
 
-                // KADER-SAISONSTATISTIK (Tabelle aus Screenshot 1)
                 if (playersData.response && playersData.response.length > 0) {
                     cachedTeamPlayersData = playersData.response;
                     cachedTeamPlayersData.sort((a, b) => (b.statistics[0].games.rating || 0) - (a.statistics[0].games.rating || 0));
@@ -889,7 +885,6 @@
                 if (sortBy === 'games') return (statB.games.appearences || 0) - (statA.games.appearences || 0);
             });
 
-            // Buttons anpassen
             document.getElementById("sortRatingBtn").style.background = sortBy === 'rating' ? 'var(--accent-color)' : '#21262d';
             document.getElementById("sortRatingBtn").style.color = sortBy === 'rating' ? '#000' : '#fff';
             document.getElementById("sortGoalsBtn").style.background = sortBy === 'goals' ? 'var(--accent-color)' : '#21262d';
@@ -940,7 +935,7 @@
                         <td class="center">${yellowCards > 0 ? '🟨 ' + yellowCards : '-'}</td>
                         <td class="center">${redCards > 0 ? '🟥 ' + redCards : '-'}</td>
                     </tr>
-              `;
+                `;
             });
 
             html += `</table>`;
@@ -1120,36 +1115,36 @@
                           }
                       } else if (ev.type === 'subst') {
                           icon = '🔄';
-                  }
-
-                      let playerId = ev.player ? ev.player.id : null;
-                      let playerName = ev.player ? ev.player.name : '';
-                      let photoUrl = playerId ? (playerPhotoCache[playerId] || '') : '';
-                      if (playerId && !photoUrl) {
-                          fetchAndCachePlayerPhoto(playerId);
                       }
 
-                      let isHomeEv = ev.team.id === home.id;
-                      let teamLogo = isHomeEv ? home.logo : away.logo;
-                      let teamNameShort = isHomeEv ? home.name : away.name;
+                          let playerId = ev.player ? ev.player.id : null;
+                          let playerName = ev.player ? ev.player.name : '';
+                          let photoUrl = playerId ? (playerPhotoCache[playerId] || '') : '';
+                          if (playerId && !photoUrl) {
+                              fetchAndCachePlayerPhoto(playerId);
+                          }
 
-                      matchTimelineHtml += `
-                          <div class="match-timeline-node ${isGoal ? 'is-goal' : ''}">
-                              <div class="match-timeline-minute">${ev.time.elapsed}'</div>
-                              <div class="match-timeline-avatar-container">
-                                  <img src="${photoUrl || 'https://via.placeholder.com/32'}" class="match-timeline-player-img player-img-${playerId}" alt="${playerName}">
-                                  <div class="match-timeline-badge-mini" title="${isGoal ? 'Torstand: ' + tH + ':' + tA : 'Aktion'}">${icon}</div>
+                          let isHomeEv = ev.team.id === home.id;
+                          let teamLogo = isHomeEv ? home.logo : away.logo;
+                          let teamNameShort = isHomeEv ? home.name : away.name;
+
+                          matchTimelineHtml += `
+                              <div class="match-timeline-node ${isGoal ? 'is-goal' : ''}">
+                                  <div class="match-timeline-minute">${ev.time.elapsed}'</div>
+                                  <div class="match-timeline-avatar-container">
+                                      <img src="${photoUrl || 'https://via.placeholder.com/32'}" class="match-timeline-player-img player-img-${playerId}" alt="${playerName}">
+                                      <div class="match-timeline-badge-mini" title="${isGoal ? 'Torstand: ' + tH + ':' + tA : 'Aktion'}">${icon}</div>
+                                  </div>
+                                  <div class="match-timeline-player" title="${playerName}">${playerName}</div>
+                                  <div class="match-timeline-team">
+                                      <img src="${teamLogo}" style="width:12px; height:12px; object-fit:contain;" alt="${teamNameShort}">
+                                      <span>${isHomeEv ? 'Heim' : 'Gast'}</span>
+                                  </div>
                               </div>
-                              <div class="match-timeline-player" title="${playerName}">${playerName}</div>
-                              <div class="match-timeline-team">
-                                  <img src="${teamLogo}" style="width:12px; height:12px; object-fit:contain;" alt="${teamNameShort}">
-                                  <span>${isHomeEv ? 'Heim' : 'Gast'}</span>
-                              </div>
-                          </div>
-                      `;
-                  });
-                  matchTimelineHtml += `</div></div>`;
-          }
+                          `;
+                      });
+                      matchTimelineHtml += `</div></div>`;
+              }
 
               let scorersHtml = "";
               let goalEvents = events.filter(ev => ev.type === 'Goal');
@@ -1179,9 +1174,9 @@
               `;
               container.appendChild(itemDiv);
         });
-            document.getElementById('tickerTrack').innerHTML = tickerHtml + tickerHtml;
+        document.getElementById('tickerTrack').innerHTML = tickerHtml + tickerHtml;
 
-            manageSmartPolling(hasLiveGames);
+        manageSmartPolling(hasLiveGames);
       }
     } catch(e) {}
   }
@@ -1269,95 +1264,95 @@
                                           </div>
                                       </div>
                                   `;
-                          });
-                          timelineHtml += `</div></div>`;
+                              });
+                              timelineHtml += `</div></div>`;
+                      }
                   }
-              }
-              document.getElementById("modalEvents").innerHTML = timelineHtml;
+                  document.getElementById("modalEvents").innerHTML = timelineHtml;
 
-              let lineupsHtml = "Aufstellungen noch nicht verfügbar.";
-              if (lineupsData.response && lineupsData.response.length === 2) {
-                  let lHome = lineupsData.response[0];
-                  let lAway = lineupsData.response[1];
+                  let lineupsHtml = "Aufstellungen noch nicht verfügbar.";
+                  if (lineupsData.response && lineupsData.response.length === 2) {
+                      let lHome = lineupsData.response[0];
+                      let lAway = lineupsData.response[1];
 
-                  lHome.startXI.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
-                  lHome.substitutes.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
-                  lAway.startXI.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
-                  lAway.substitutes.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
+                      lHome.startXI.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
+                      lHome.substitutes.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
+                      lAway.startXI.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
+                      lAway.substitutes.forEach(p => cachePlayerPhoto(p.player.id, p.player.photo));
 
-                  function formatTeamDetails(lineupObj, teamObj) {
-                      let start11 = lineupObj.startXI.map(p => {
-                          let photoHtml = getPlayerPhotoHtml(p.player.id, '16px');
-                          return `<span style="display:inline-flex; align-items:center; margin-right:6px;">${photoHtml}#${p.player.number || '-'} ${p.player.name} (${p.player.pos})</span>`;
-                      }).join(", ");
+                      function formatTeamDetails(lineupObj, teamObj) {
+                          let start11 = lineupObj.startXI.map(p => {
+                              let photoHtml = getPlayerPhotoHtml(p.player.id, '16px');
+                              return `<span style="display:inline-flex; align-items:center; margin-right:6px;">${photoHtml}#${p.player.number || '-'} ${p.player.name} (${p.player.pos})</span>`;
+                          }).join(", ");
 
-                      let subs = lineupObj.substitutes.map(p => {
-                          let photoHtml = getPlayerPhotoHtml(p.player.id, '16px');
-                          return `<span style="display:inline-flex; align-items:center; margin-right:6px;">${photoHtml}#${p.player.number || '-'} ${p.player.name}</span>`;
-                      }).join(", ");
-                       
-                      let teamEvents = (match.events || []).filter(ev => ev.team.id === teamObj.id);
-                       
-                      let subsEvents = teamEvents.filter(ev => ev.type === 'subst').map(ev => {
-                          let pInPhoto = getPlayerPhotoHtml(ev.assist?.id, '16px');
-                          let pOutPhoto = getPlayerPhotoHtml(ev.player?.id, '16px');
-                          return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">🔄 ${ev.time.elapsed}' Ein: ${pInPhoto}${ev.assist?.name || ''} | Aus: ${pOutPhoto}${ev.player?.name || ''}</div>`;
-                      }).join("");
-                       
-                      let cardsEvents = teamEvents.filter(ev => ev.type === 'Card').map(ev => {
-                          let detail = (ev.detail || '').toLowerCase();
-                          let comments = (ev.comments || '').toLowerCase();
-                          let cIcon = '🟨';
+                          let subs = lineupObj.substitutes.map(p => {
+                              let photoHtml = getPlayerPhotoHtml(p.player.id, '16px');
+                              return `<span style="display:inline-flex; align-items:center; margin-right:6px;">${photoHtml}#${p.player.number || '-'} ${p.player.name}</span>`;
+                          }).join(", ");
                            
-                          if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || (detail.includes('red') && detail.includes('yellow')) || comments.includes('yellow/red') || comments.includes('second yellow')) {
-                              cIcon = '🟨🟥';
-                          } else if (detail.includes('red') || comments.includes('red card')) {
-                              cIcon = '🟥';
-                          }
+                          let teamEvents = (match.events || []).filter(ev => ev.team.id === teamObj.id);
                            
-                          let photoHtml = getPlayerPhotoHtml(ev.player.id, '16px');
-                          return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">${cIcon} ${photoHtml} ${ev.time.elapsed}' ${ev.player.name}</div>`;
-                      }).join("");
+                          let subsEvents = teamEvents.filter(ev => ev.type === 'subst').map(ev => {
+                              let pInPhoto = getPlayerPhotoHtml(ev.assist?.id, '16px');
+                              let pOutPhoto = getPlayerPhotoHtml(ev.player?.id, '16px');
+                              return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">🔄 ${ev.time.elapsed}' Ein: ${pInPhoto}${ev.assist?.name || ''} | Aus: ${pOutPhoto}${ev.player?.name || ''}</div>`;
+                          }).join("");
+                           
+                          let cardsEvents = teamEvents.filter(ev => ev.type === 'Card').map(ev => {
+                              let detail = (ev.detail || '').toLowerCase();
+                              let comments = (ev.comments || '').toLowerCase();
+                              let cIcon = '🟨';
+                               
+                              if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || (detail.includes('red') && detail.includes('yellow')) || comments.includes('yellow/red') || comments.includes('second yellow')) {
+                                  cIcon = '🟨🟥';
+                              } else if (detail.includes('red') || comments.includes('red card')) {
+                                  cIcon = '🟥';
+                              }
+                               
+                              let photoHtml = getPlayerPhotoHtml(ev.player.id, '16px');
+                              return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">${cIcon} ${photoHtml} ${ev.time.elapsed}' ${ev.player.name}</div>`;
+                          }).join("");
 
-                      return `
-                          <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color); flex:1;">
-                              <div style="font-weight:bold; color:var(--accent-color); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                                  <img src="${teamObj.logo}" style="width:18px; height:18px; object-fit:contain;"> ${teamObj.name}
+                          return `
+                              <div style="background:#161b22; padding:12px; border-radius:8px; border:1px solid var(--border-color); flex:1;">
+                                  <div style="font-weight:bold; color:var(--accent-color); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                      <img src="${teamObj.logo}" style="width:18px; height:18px; object-fit:contain;"> ${teamObj.name}
+                                  </div>
+                                  <div style="font-size:0.85rem; margin-bottom:6px;">Formation: <b>${lineupObj.formation || 'N/V'}</b> | Trainer: ${lineupObj.coach?.name || '-' }</div>
+                                  <div style="font-size:0.82rem; margin-bottom:6px; color:var(--text-muted);"><b>Startelf:</b> ${start11}</div>
+                                  <div style="font-size:0.82rem; margin-bottom:8px; color:var(--text-muted);"><b>Bank:</b> ${subs}</div>
+                                  ${subsEvents ? `<div style="margin-top:6px; border-top:1px dashed var(--border-color); padding-top:4px;"><b>Auswechslungen:</b>${subsEvents}</div>` : ''}
+                                  ${cardsEvents ? `<div style="margin-top:6px; border-top:1px dashed var(--border-color); padding-top:4px;"><b>Karten:</b>${cardsEvents}</div>` : ''}
                               </div>
-                              <div style="font-size:0.85rem; margin-bottom:6px;">Formation: <b>${lineupObj.formation || 'N/V'}</b> | Trainer: ${lineupObj.coach?.name || '-' }</div>
-                              <div style="font-size:0.82rem; margin-bottom:6px; color:var(--text-muted);"><b>Startelf:</b> ${start11}</div>
-                              <div style="font-size:0.82rem; margin-bottom:8px; color:var(--text-muted);"><b>Bank:</b> ${subs}</div>
-                              ${subsEvents ? `<div style="margin-top:6px; border-top:1px dashed var(--border-color); padding-top:4px;"><b>Auswechslungen:</b>${subsEvents}</div>` : ''}
-                              ${cardsEvents ? `<div style="margin-top:6px; border-top:1px dashed var(--border-color); padding-top:4px;"><b>Karten:</b>${cardsEvents}</div>` : ''}
+                          `;
+                      }
+
+                      lineupsHtml = `<div style="display:flex; flex-direction:column; gap:15px;">
+                          <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                              ${formatTeamDetails(lHome, home)}
+                              ${formatTeamDetails(lAway, away)}
                           </div>
-                      `;
+                      </div>`;
                   }
+                  document.getElementById("modalLineups").innerHTML = lineupsHtml;
 
-                  lineupsHtml = `<div style="display:flex; flex-direction:column; gap:15px;">
-                      <div style="display:flex; gap:15px; flex-wrap:wrap;">
-                          ${formatTeamDetails(lHome, home)}
-                          ${formatTeamDetails(lAway, away)}
-                      </div>
-                  </div>`;
-              }
-              document.getElementById("modalLineups").innerHTML = lineupsHtml;
-
-              let statsHtml = "";
-              if (statsData.response && statsData.response.length === 2) {
-                  let hStats = statsData.response[0].statistics;
-                  let aStats = statsData.response[1].statistics;
-                  for (let i = 0; i < hStats.length; i++) {
-                      let hVal = hStats[i].value ?? 0;
-                      let aVal = aStats[i].value ?? 0;
-                      let total = (parseFloat(hVal) || 0) + (parseFloat(aVal) || 0);
-                      let hPer = total > 0 ? ((parseFloat(hVal) || 0) / total) * 100 : 50;
-                      statsHtml += `<div class="stat-row"><div class="stat-info"><span>${hVal}</span><span>${hStats[i].type}</span><span>${aVal}</span></div><div class="stat-bar-container"><div class="stat-bar-home" style="width: ${hPer}%;"></div><div class="stat-bar-away" style="width: ${100 - hPer}%;"></div></div></div>`;
+                  let statsHtml = "";
+                  if (statsData.response && statsData.response.length === 2) {
+                      let hStats = statsData.response[0].statistics;
+                      let aStats = statsData.response[1].statistics;
+                      for (let i = 0; i < hStats.length; i++) {
+                          let hVal = hStats[i].value ?? 0;
+                          let aVal = aStats[i].value ?? 0;
+                          let total = (parseFloat(hVal) || 0) + (parseFloat(aVal) || 0);
+                          let hPer = total > 0 ? ((parseFloat(hVal) || 0) / total) * 100 : 50;
+                          statsHtml += `<div class="stat-row"><div class="stat-info"><span>${hVal}</span><span>${hStats[i].type}</span><span>${aVal}</span></div><div class="stat-bar-container"><div class="stat-bar-home" style="width: ${hPer}%;"></div><div class="stat-bar-away" style="width: ${100 - hPer}%;"></div></div></div>`;
+                      }
                   }
+                  document.getElementById("modalStats").innerHTML = statsHtml !== "" ? statsHtml : "Keine Statistiken.";
               }
-              document.getElementById("modalStats").innerHTML = statsHtml !== "" ? statsHtml : "Keine Statistiken.";
-          }
-      } catch(e) {}
-    }
+          } catch(e) {}
+      }
 
       function changeMatchday(direction) {
           const select = document.getElementById("matchdaySelect");
@@ -1368,7 +1363,6 @@
           }
     }
 
-    // Aktualisierte loadTable-Funktion mit Tordifferenz
     async function loadTable() {
         const container = document.getElementById("tableContainer");
         try {
@@ -1377,7 +1371,6 @@
             if(data.response && data.response.length > 0) {
                 const standings = data.response[0].league.standings[0];
                 
-                // Erweiterte Kopfzeile mit S, U, N
                 let html = `<table><tr><th>#</th><th>Team</th><th class="center">Sp</th><th class="center">S</th><th class="center">U</th><th class="center">N</th><th class="center">Tore</th><th class="center">Diff</th><th class="right">Pkt</th></tr>`;
                 
                 let top3Html = "";
@@ -1395,7 +1388,6 @@
                     let diffValue = s.goalsDiff !== undefined ? s.goalsDiff : (s.all.goals.for - s.all.goals.against);
                     let diffFormatted = diffValue > 0 ? '+' + diffValue : diffValue;
                     
-                    // Zeilendaten passend zur neuen Kopfzeile
                     html += `<tr class="table-row ${zoneClass}" onclick="openTeamStats(${s.team.id}, '${s.team.name}', '${s.team.logo}')">
                         <td><b>${s.rank}</b></td>
                         <td><div class="table-team"><img src="${s.team.logo}"><span>${s.team.name}</span></div></td>
