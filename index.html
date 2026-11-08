@@ -502,10 +502,13 @@
         async function checkAllGoalsAndNotify(home, away, hScore, aScore, latestScorer, matchId, scoringTeam) {
             if (!latestScorer || latestScorer.includes("Tor") || latestScorer.trim() === "⚽") return;
 
+            // WICHTIG: Nur reagieren, wenn es überhaupt Tore gibt (0:0 überspringen)
+            if (hScore === 0 && aScore === 0) return;
+
             let cleanPlayer = latestScorer.replace(/⚽\s*/, '').replace(/\(\d+['']\)/, '').replace('(Pen)', '').replace('(ET)', '').trim();
             let minStr = latestScorer.match(/\(\d+['']\)/) ? ` ${latestScorer.match(/\(\d+['']\)/)[0]}` : '';
             
-            // WICHTIG: Die ID wird NUR noch aus Match-ID und Spielstand gebildet!
+            // Die ID besteht NUR aus Match-ID und Spielstand (z.B. 1575216_1:0)
             let uniqueGoalId = `${matchId}_${hScore}:${aScore}`;
             
             if (processingGoals.has(uniqueGoalId)) return;
@@ -524,12 +527,14 @@
             try {
                 processingGoals.add(uniqueGoalId);
 
+                // 1. In Supabase nachschauen, ob diese ID (Match + Spielstand) schon existiert
                 let { data: existing, error: checkError } = await supabaseClient
                     .from('sent_goals_bl')
                     .select('goal_id')
                     .eq('goal_id', uniqueGoalId)
                     .maybeSingle();
 
+                // 2. Nur wenn sie NOCH NICHT in der Datenbank steht, wird der Push ausgelöst!
                 if (!existing && !checkError) {
                     let { error: insertError } = await supabaseClient
                         .from('sent_goals_bl')
@@ -551,6 +556,7 @@
             } catch (e) {
                 console.error("Fehler beim Bundesliga Tor-Cache & Push:", e);
             } finally {
+                processingGoals.delete(uniqueGrade = uniqueGoalId);
                 processingGoals.delete(uniqueGoalId);
             }
         }
