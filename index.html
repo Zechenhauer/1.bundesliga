@@ -36,10 +36,12 @@
 
         .status-box { background: #161b22; border: 1px solid var(--accent-color); padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
 
-        /* Laufband Design */
+        /* Laufband Design & interaktiver Ticker-Schalter */
         .ticker-wrapper { width: 100%; background: #0c0809; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; margin-bottom: 20px; display: flex; align-items: center; height: 48px; position: relative; }
-        .ticker-label { background: var(--accent-color); color: #000; font-size: 0.75rem; font-weight: bold; padding: 0 14px; height: 100%; display: flex; align-items: center; z-index: 3; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 4px 0 10px rgba(0,0,0,0.5); }
+        .ticker-label { background: var(--accent-color); color: #000; font-size: 0.75rem; font-weight: bold; padding: 0 14px; height: 100%; display: flex; align-items: center; z-index: 3; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 4px 0 10px rgba(0,0,0,0.5); cursor: pointer; transition: background 0.2s; user-select: none; }
+        .ticker-label:hover { background: var(--accent-hover); }
         .ticker-content-box { overflow: hidden; white-space: nowrap; flex: 1; position: relative; display: flex; align-items: center; }
+        .ticker-content-box.hidden { display: none !important; }
         .ticker-track { display: flex; white-space: nowrap; will-change: transform; animation: ticker-scroll 35s linear infinite; }
         .ticker-track:hover { animation-play-state: paused; }
         .ticker-item { display: inline-flex; align-items: center; background: #150a0d; border: 1px solid var(--border-color); padding: 6px 14px; margin: 0 6px; border-radius: 8px; color: #ffffff; font-size: 0.82rem; font-weight: 500; gap: 10px; }
@@ -189,10 +191,12 @@
     </div>
 
     <div class="container">
-        <!-- Laufband Oben -->
+        <!-- Laufband Oben mit permanent sichtbarem Schalter -->
         <div class="ticker-wrapper">
-            <div class="ticker-label" id="tickerLabel">⚽ Ticker</div>
-            <div class="ticker-content-box">
+            <div class="ticker-label" id="tickerLabel" onclick="toggleTicker()" title="Klicken zum Ein- und Ausblenden des Tickers">
+                ⚽ Ticker: <span id="tickerStateText">An</span>
+            </div>
+            <div class="ticker-content-box" id="tickerContentBox">
                 <div class="ticker-track" id="tickerTrack">
                     <span class="ticker-item">Lade Ticker-Daten...</span>
                 </div>
@@ -335,6 +339,30 @@
         let playerPhotoCache = JSON.parse(localStorage.getItem('bl_player_photo_cache') || '{}');
         let cachedTeamPlayersData = []; // Cache für die Kader-Saisonstatistik eines Teams
 
+        // Ticker Sichtbarkeit aus dem LocalStorage laden (Standard: true)
+        let isTickerVisible = JSON.parse(localStorage.getItem('bl_ticker_visible') ?? 'true');
+
+        function toggleTicker() {
+            isTickerVisible = !isTickerVisible;
+            localStorage.setItem('bl_ticker_visible', JSON.stringify(isTickerVisible));
+            updateTickerVisibilityUI();
+        }
+
+        function updateTickerVisibilityUI() {
+            const tickerContentBox = document.getElementById('tickerContentBox');
+            const stateText = document.getElementById('tickerStateText');
+
+            if (tickerContentBox) {
+                if (isTickerVisible) {
+                    tickerContentBox.classList.remove('hidden');
+                    if (stateText) stateText.textContent = "An";
+                } else {
+                    tickerContentBox.classList.add('hidden');
+                    if (stateText) stateText.textContent = "Aus";
+                }
+            }
+        }
+
         function cachePlayerPhoto(playerId, photoUrl) {
             if (playerId && photoUrl && !playerPhotoCache[playerId]) {
                 playerPhotoCache[playerId] = photoUrl;
@@ -392,6 +420,7 @@
         }
 
         async function init() {
+            updateTickerVisibilityUI();
             await checkApiStatus();
             await loadRounds();
             loadTable();
@@ -502,13 +531,11 @@
         async function checkAllGoalsAndNotify(home, away, hScore, aScore, latestScorer, matchId, scoringTeam) {
             if (!latestScorer || latestScorer.includes("Tor") || latestScorer.trim() === "⚽") return;
 
-            // WICHTIG: Nur reagieren, wenn es überhaupt Tore gibt (0:0 überspringen)
             if (hScore === 0 && aScore === 0) return;
 
             let cleanPlayer = latestScorer.replace(/⚽\s*/, '').replace(/\(\d+['']\)/, '').replace('(Pen)', '').replace('(ET)', '').trim();
             let minStr = latestScorer.match(/\(\d+['']\)/) ? ` ${latestScorer.match(/\(\d+['']\)/)[0]}` : '';
             
-            // Die ID besteht NUR aus Match-ID und Spielstand (z.B. 1575216_1:0)
             let uniqueGoalId = `${matchId}_${hScore}:${aScore}`;
             
             if (processingGoals.has(uniqueGoalId)) return;
@@ -527,14 +554,12 @@
             try {
                 processingGoals.add(uniqueGoalId);
 
-                // 1. In Supabase nachschauen, ob diese ID (Match + Spielstand) schon existiert
                 let { data: existing, error: checkError } = await supabaseClient
                     .from('sent_goals_bl')
                     .select('goal_id')
                     .eq('goal_id', uniqueGoalId)
                     .maybeSingle();
 
-                // 2. Nur wenn sie NOCH NICHT in der Datenbank steht, wird der Push ausgelöst!
                 if (!existing && !checkError) {
                     let { error: insertError } = await supabaseClient
                         .from('sent_goals_bl')
@@ -702,7 +727,7 @@
             document.getElementById("teamStatsHeader").innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><img src="${teamLogo}" style="width:30px; height:30px; object-fit:contain;"><span>Saisonstatistik: ${teamName}</span></div>`;
             document.getElementById("teamStatsContent").innerHTML = "Lade Team-Werte, erweiterte Team-Stats & Kader-Statistiken...";
 
-            cachedTeamPlayersData = []; // Zurücksetzen für neues Team
+            cachedTeamPlayersData = [];
 
             try {
                 const [statsRes, teamInfoRes, coachRes, squadRes, trophiesRes, playersRes] = await Promise.all([
@@ -994,7 +1019,7 @@
                           select.appendChild(opt);
                       });
                       getCurrentRound();
-              }
+            }
             } catch (e) {}
         }
 
@@ -1006,7 +1031,7 @@
                   if(data.response && data.response.length > 0) {
                       currentMatchday = data.response[0];
                       select.value = currentMatchday;
-              } else if(select.options.length > 0) { currentMatchday = select.options[0].value; }
+            } else if(select.options.length > 0) { currentMatchday = select.options[0].value; }
               loadMatchday(currentMatchday);
           } catch(e) {
               const select = document.getElementById("matchdaySelect");
@@ -1354,13 +1379,13 @@
           } catch(e) {}
       }
 
-      function changeMatchday(direction) {
-          const select = document.getElementById("matchdaySelect");
-          const index = select.selectedIndex;
-          if(index + direction >= 0 && index + direction < select.options.length) {
-              select.selectedIndex = index + direction;
-              loadMatchday(select.value);
-          }
+    function changeMatchday(direction) {
+        const select = document.getElementById("matchdaySelect");
+        const index = select.selectedIndex;
+        if(index + direction >= 0 && index + direction < select.options.length) {
+            select.selectedIndex = index + direction;
+            loadMatchday(select.value);
+        }
     }
 
     async function loadTable() {
