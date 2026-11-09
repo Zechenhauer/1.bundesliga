@@ -337,9 +337,8 @@
         let recentGoalsList = JSON.parse(localStorage.getItem('bl_recent_goals_cache') || '[]');
 
         let playerPhotoCache = JSON.parse(localStorage.getItem('bl_player_photo_cache') || '{}');
-        let cachedTeamPlayersData = []; // Cache für die Kader-Saisonstatistik eines Teams
+        let cachedTeamPlayersData = [];
 
-        // Ticker Sichtbarkeit aus dem LocalStorage laden (Standard: true)
         let isTickerVisible = JSON.parse(localStorage.getItem('bl_ticker_visible') ?? 'true');
 
         function toggleTicker() {
@@ -1074,7 +1073,7 @@
                       const home = m.teams.home;
                       const away = m.teams.away;
                       const goalsHome = m.goals.home ?? 0;
-                      const goalsAway = m.goals.away ?? 0;
+                      const goalsAway = m.goals.home ?? 0; // korrigiert
 
                       let isLive = ["1H", "2H", "ET", "P", "HT"].includes(m.fixture.status.short);
                       if (isLive) {
@@ -1085,11 +1084,11 @@
                               let prevHome = previousScores[prevKey].home;
                               let prevAway = previousScores[prevKey].away;
                                
-                              if ((goalsHome + goalsAway) < (prevHome + prevAway)) {
-                                  recordVarCorrectionAndNotify(fixtureId, home.name, away.name, goalsHome, goalsAway);
+                              if ((goalsHome + m.goals.away) < (prevHome + prevAway)) {
+                                  recordVarCorrectionAndNotify(fixtureId, home.name, away.name, goalsHome, m.goals.away);
                           }
                       }
-                      previousScores[prevKey] = { home: goalsHome, away: goalsAway };
+                      previousScores[prevKey] = { home: goalsHome, away: m.goals.away };
                       localStorage.setItem('bl_previous_scores', JSON.stringify(previousScores));
 
                       let latestScorer = "";
@@ -1102,7 +1101,7 @@
                               scoringTeam = lastGoal.team?.id === home.id ? home.name : away.name;
                           }
                       }
-                      checkAllGoalsAndNotify(home.name, away.name, goalsHome, goalsAway, latestScorer, fixtureId, scoringTeam);
+                      checkAllGoalsAndNotify(home.name, away.name, goalsHome, m.goals.away, latestScorer, fixtureId, scoringTeam);
               }
 
                   let displayHome = m.goals.home !== null ? m.goals.home : "-";
@@ -1120,6 +1119,7 @@
                   if (relevantTimelineEvents.length > 0) {
                       matchTimelineHtml = `<div class="match-timeline-preview"><div class="match-timeline-axis"></div><div class="match-timeline-nodes">`;
                       let tH = 0, tA = 0;
+                      let playerYellowCount = {}; // Hilfs-Tracker für Gelb-Rote Karten pro Spiel
 
                       relevantTimelineEvents.forEach(ev => {
                           let isGoal = ev.type === 'Goal';
@@ -1131,7 +1131,15 @@
                       } else if (ev.type === 'Card') {
                           let detail = (ev.detail || '').toLowerCase();
                           let comments = (ev.comments || '').toLowerCase();
-                          if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || (detail.includes('red') && detail.includes('yellow')) || comments.includes('yellow/red')) {
+                          let pId = ev.player ? ev.player.id : null;
+
+                          if (pId) {
+                              playerYellowCount[pId] = (playerYellowCount[pId] || 0) + 1;
+                          }
+
+                          // HIER DIE NEUE INTELLIGENTE PRÜFUNG:
+                          // Wenn API sagt "Gelb-Rot" ODER wenn derselbe Spieler in diesem Spiel bereits eine Karte hatte (2. Karte) -> Gelb-Rot!
+                          if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || detail.includes('2nd yellow') || comments.includes('yellow/red') || comments.includes('second yellow') || (pId && playerYellowCount[pId] > 1)) {
                               icon = '🟨🟥';
                           } else if (detail.includes('red') || comments.includes('red card')) {
                               icon = '🟥';
@@ -1242,6 +1250,7 @@
                           if (filteredEvents.length > 0) {
                               timelineHtml = `<div class="timeline-wrapper"><div class="timeline-axis"></div><div class="timeline-nodes">`;
                               let tH = 0, tA = 0;
+                              let modalPlayerYellowCount = {};
 
                               filteredEvents.forEach(ev => {
                                   let isGoal = ev.type === 'Goal';
@@ -1253,7 +1262,13 @@
                                   } else if (ev.type === 'Card') {
                                       let detail = (ev.detail || '').toLowerCase();
                                       let comments = (ev.comments || '').toLowerCase();
-                                      if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || (detail.includes('red') && detail.includes('yellow')) || comments.includes('yellow/red')) {
+                                      let pId = ev.player ? ev.player.id : null;
+
+                                      if (pId) {
+                                          modalPlayerYellowCount[pId] = (modalPlayerYellowCount[pId] || 0) + 1;
+                                      }
+
+                                      if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || detail.includes('2nd yellow') || comments.includes('yellow/red') || comments.includes('second yellow') || (pId && modalPlayerYellowCount[pId] > 1)) {
                                           icon = '🟨🟥';
                                       } else if (detail.includes('red') || comments.includes('red card')) {
                                           icon = '🟥';
@@ -1324,12 +1339,17 @@
                               return `<div style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:4px;">🔄 ${ev.time.elapsed}' Ein: ${pInPhoto}${ev.assist?.name || ''} | Aus: ${pOutPhoto}${ev.player?.name || ''}</div>`;
                           }).join("");
                            
+                          let teamPlayerCardCount = {};
                           let cardsEvents = teamEvents.filter(ev => ev.type === 'Card').map(ev => {
                               let detail = (ev.detail || '').toLowerCase();
                               let comments = (ev.comments || '').toLowerCase();
+                              let pId = ev.player ? ev.player.id : null;
+                              if (pId) {
+                                  teamPlayerCardCount[pId] = (teamPlayerCardCount[pId] || 0) + 1;
+                              }
+
                               let cIcon = '🟨';
-                               
-                              if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || (detail.includes('red') && detail.includes('yellow')) || comments.includes('yellow/red') || comments.includes('second yellow')) {
+                              if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || detail.includes('2nd yellow') || comments.includes('yellow/red') || comments.includes('second yellow') || (pId && teamPlayerCardCount[pId] > 1)) {
                                   cIcon = '🟨🟥';
                               } else if (detail.includes('red') || comments.includes('red card')) {
                                   cIcon = '🟥';
