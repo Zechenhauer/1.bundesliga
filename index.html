@@ -311,6 +311,17 @@
         </div>
     </div>
 
+    <!-- Modal für Betfair Wettquoten -->
+    <div id="betfairOddsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('betfairOddsModal')">&times;</button>
+            <div class="modal-header">
+                <div id="betfairOddsHeader" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color);">Betfair Wettquoten</div>
+            </div>
+            <div id="betfairOddsContent" style="margin-top: 15px;">Lade Quoten...</div>
+        </div>
+    </div>
+
     <!-- Modals für Bestenlisten -->
     <div id="scorersModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('scorersModal')">&times;</button><div class="modal-header"><h2>⚽ Torschützenliste</h2></div><div id="fullScorersContainer">Lade...</div></div></div>
     <div id="assistsModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('assistsModal')">&times;</button><div class="modal-header"><h2>🎯 Top-Vorlagengeber</h2></div><div id="fullAssistsContainer">Lade...</div></div></div>
@@ -1047,7 +1058,7 @@
             try {
                   const res = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${season}&round=${round}`, { headers: { "x-apisports-key": apiKey } });
                   const data = await res.json();
-                   
+                  
                   if(data.response && data.response.length > 0) {
                       container.innerHTML = "";
                       let tickerHtml = "";
@@ -1073,7 +1084,7 @@
                       const home = m.teams.home;
                       const away = m.teams.away;
                       const goalsHome = m.goals.home ?? 0;
-                      const goalsAway = m.goals.home ?? 0; // korrigiert
+                      const goalsAway = m.goals.away ?? 0;
 
                       let isLive = ["1H", "2H", "ET", "P", "HT"].includes(m.fixture.status.short);
                       if (isLive) {
@@ -1119,7 +1130,7 @@
                   if (relevantTimelineEvents.length > 0) {
                       matchTimelineHtml = `<div class="match-timeline-preview"><div class="match-timeline-axis"></div><div class="match-timeline-nodes">`;
                       let tH = 0, tA = 0;
-                      let playerYellowCount = {}; // Hilfs-Tracker für Gelb-Rote Karten pro Spiel
+                      let playerYellowCount = {};
 
                       relevantTimelineEvents.forEach(ev => {
                           let isGoal = ev.type === 'Goal';
@@ -1137,8 +1148,6 @@
                               playerYellowCount[pId] = (playerYellowCount[pId] || 0) + 1;
                           }
 
-                          // HIER DIE NEUE INTELLIGENTE PRÜFUNG:
-                          // Wenn API sagt "Gelb-Rot" ODER wenn derselbe Spieler in diesem Spiel bereits eine Karte hatte (2. Karte) -> Gelb-Rot!
                           if (detail.includes('second yellow') || detail.includes('yellow/red') || detail.includes('yellowred') || detail.includes('2nd yellow') || comments.includes('yellow/red') || comments.includes('second yellow') || (pId && playerYellowCount[pId] > 1)) {
                               icon = '🟨🟥';
                           } else if (detail.includes('red') || comments.includes('red card')) {
@@ -1204,6 +1213,10 @@
                   </div>
                   ${matchTimelineHtml}
                   ${scorersHtml}
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-color);">
+                      <span style="font-size:0.75rem; color:var(--text-muted);">Spiel-ID: #${m.fixture.id}</span>
+                      <button onclick="event.stopPropagation(); openBetfairOdds(${m.fixture.id}, '${home.name.replace(/'/g, "\\'")}', '${away.name.replace(/'/g, "\\'")}')" style="background:#21262d; border:1px solid var(--border-color); color:var(--accent-color); padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer;">🎯 Betfair Quoten</button>
+                  </div>
               `;
               container.appendChild(itemDiv);
         });
@@ -1213,6 +1226,81 @@
       }
     } catch(e) {}
   }
+
+        // Hilfsfunktion zur Übersetzung der englischen Wettarten & Werte ins Deutsche
+        function translateBetfairTerm(text) {
+            if (!text) return '';
+            const dict = {
+                'Match Winner': 'Spielausgang (1X2)',
+                'Home/Away': 'Heim / Auswärts (Sieg ohne Remis)',
+                'Asian Handicap': 'Asiatisches Handicap',
+                'Goals Over/Under': 'Tore Über / Unter',
+                'Goals Over/Under First Half': 'Tore Über / Unter (1. Halbzeit)',
+                'Both Teams Score': 'Beide Teams treffen',
+                'Handicap Result': 'Handicap-Ergebnis',
+                'Exact Score': 'Genaues Ergebnis',
+                'Home': 'Heim',
+                'Away': 'Auswärts',
+                'Draw': 'Unentschieden',
+                'Yes': 'Ja',
+                'No': 'Nein',
+                'Over': 'Über',
+                'Under': 'Unter'
+            };
+            let translated = text;
+            for (let eng in dict) {
+                translated = translated.replace(new RegExp('\\b' + eng + '\\b', 'g'), dict[eng]);
+            }
+            return translated;
+        }
+
+        async function openBetfairOdds(fixtureId, homeName, awayName) {
+            const modal = document.getElementById("betfairOddsModal");
+            modal.style.display = "flex";
+            document.getElementById("betfairOddsHeader").innerHTML = `Betfair Wettquoten: ${homeName} vs ${awayName} (ID: ${fixtureId})`;
+            document.getElementById("betfairOddsContent").innerHTML = "Lade Quoten...";
+
+            try {
+                const res = await fetch(`https://v3.football.api-sports.io/odds?fixture=${fixtureId}`, { headers: { "x-apisports-key": apiKey } });
+                const data = await res.json();
+
+                if (data.response && data.response.length > 0) {
+                    const bookmakers = data.response[0].bookmakers || [];
+                    const betfairBm = bookmakers.find(bm => bm.name.toLowerCase().includes('betfair'));
+
+                    if (!betfairBm || !betfairBm.bets || betfairBm.bets.length === 0) {
+                        document.getElementById("betfairOddsContent").innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Keine Betfair Quoten für dieses Spiel verfügbar.</div>`;
+                        return;
+                    }
+
+                    let html = `<div style="display:flex; flex-direction:column; gap:15px;">`;
+                    betfairBm.bets.forEach(bet => {
+                        let translatedBetName = translateBetfairTerm(bet.name);
+                        html += `
+                            <div style="background:#161b22; border:1px solid var(--border-color); border-radius:8px; padding:12px;">
+                                <div style="font-weight:bold; color:var(--accent-color); margin-bottom:8px; font-size:0.9rem;">${translatedBetName}</div>
+                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:8px;">
+                        `;
+                        (bet.values || []).forEach(val => {
+                            let translatedValName = translateBetfairTerm(val.value);
+                            html += `
+                                <div style="background:#21262d; border:1px solid var(--border-color); padding:8px; border-radius:6px; text-align:center;">
+                                    <div style="font-size:0.75rem; color:var(--text-muted);">${translatedValName}</div>
+                                    <div style="font-weight:bold; color:var(--accent-color); font-size:1rem; margin-top:2px;">${val.odd}</div>
+                                </div>
+                            `;
+                        });
+                        html += `</div></div>`;
+                    });
+                    html += `</div>`;
+                    document.getElementById("betfairOddsContent").innerHTML = html;
+                } else {
+                    document.getElementById("betfairOddsContent").innerHTML = `<div style="color:var(--text-muted); text-align:center; padding:20px;">Keine Quoten für dieses Spiel gefunden.</div>`;
+                }
+            } catch (e) {
+                document.getElementById("betfairOddsContent").innerHTML = `<div style="color:#ff3333; text-align:center; padding:20px;">Fehler beim Laden der Betfair Quoten.</div>`;
+            }
+        }
 
         async function openMatchDetails(fixtureId) {
             const modal = document.getElementById("matchModal");
