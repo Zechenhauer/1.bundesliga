@@ -236,8 +236,8 @@
             <button onclick="changeMatchday(-1)">◄ Vorheriger</button>
             <select id="matchdaySelect" onchange="loadMatchday(this.value)"></select>
             <button onclick="changeMatchday(1)">Nächster ►</button>
-            <button id="pollingToggleBtn" class="polling-toggle-btn inactive" onclick="toggleLivePolling()">
-                <span id="pollingIcon">🔴</span> Live-Polling: <span id="pollingStateText">Aus</span>
+            <button id="pollingToggleBtn" class="polling-toggle-btn active" onclick="toggleLivePolling()">
+                <span id="pollingIcon">🟢</span> Live-Polling: <span id="pollingStateText">An</span>
             </button>
             <button onclick="subscribePush()" style="background: var(--accent-color); color: #000; font-weight: bold;">🔔 Supabase Tor-Alarm</button>
             <button onclick="subscribeFinalsPush()" style="background: #21262d; color: var(--accent-color); border-color: var(--accent-color); font-weight: bold;">🏁 Endergebnisse</button>
@@ -352,7 +352,7 @@
 
         let previousScores = safeGetStorage('bl_previous_scores', {});
         let smartPollingInterval = null;
-        let isLivePollingEnabled = false;
+        let isLivePollingEnabled = safeGetStorage('bl_live_polling_enabled', true);
         let recentGoalsList = safeGetStorage('bl_recent_goals_cache', []);
         let playerPhotoCache = safeGetStorage('bl_player_photo_cache', {});
         let cachedTeamPlayersData = [];
@@ -413,21 +413,31 @@
             return `<img src="${photoUrl}" class="player-img-${playerId}" style="width:${size}; height:${size}; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:5px; ${!photoUrl ? 'display:none;' : ''}">`;
         }
 
-        function toggleLivePolling() {
-            isLivePollingEnabled = !isLivePollingEnabled;
+        function updateLivePollingUI() {
             const btn = document.getElementById("pollingToggleBtn");
             const icon = document.getElementById("pollingIcon");
             const stateText = document.getElementById("pollingStateText");
+            if (!btn || !icon || !stateText) return;
 
             if (isLivePollingEnabled) {
                 btn.className = "polling-toggle-btn active";
                 icon.textContent = "🟢";
                 stateText.textContent = "An";
-                if (currentMatchday) loadMatchday(currentMatchday, true);
             } else {
                 btn.className = "polling-toggle-btn inactive";
                 icon.textContent = "🔴";
                 stateText.textContent = "Aus";
+            }
+        }
+
+        function toggleLivePolling() {
+            isLivePollingEnabled = !isLivePollingEnabled;
+            try { localStorage.setItem('bl_live_polling_enabled', JSON.stringify(isLivePollingEnabled)); } catch(e){}
+            updateLivePollingUI();
+
+            if (isLivePollingEnabled) {
+                if (currentMatchday) loadMatchday(currentMatchday, true);
+            } else {
                 if (smartPollingInterval) {
                     clearInterval(smartPollingInterval);
                     smartPollingInterval = null;
@@ -437,6 +447,7 @@
 
         async function init() {
             updateTickerVisibilityUI();
+            updateLivePollingUI();
             await checkApiStatus();
             await loadRounds();
             loadTable();
