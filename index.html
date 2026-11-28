@@ -22,7 +22,7 @@
             --live-red: #ff3333;
             --bayern-red: #dc052d;
         }
-- { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 950px; }
 
@@ -99,7 +99,7 @@
         .match-timeline-axis { position: absolute; top: 44px; left: 15px; right: 15px; height: 2px; background: var(--border-color); z-index: 1; }
         .match-timeline-nodes { display: flex; gap: 18px; position: relative; z-index: 2; padding: 0 5px; width: max-content; align-items: flex-start; }
         .match-timeline-node { display: flex; flex-direction: column; align-items: center; text-align: center; width: 84px; flex-shrink: 0; }
-        
+
         .match-timeline-node.is-goal .match-timeline-player-img { border: 2px solid var(--accent-color); box-shadow: 0 0 10px rgba(0, 255, 135, 0.6); }
         .match-timeline-node.is-goal .match-timeline-badge-mini { background: var(--accent-color); color: #000; font-weight: bold; font-size: 0.65rem; width: auto; padding: 0 6px; border-radius: 10px; bottom: -4px; right: -12px; box-shadow: 0 0 6px rgba(0, 255, 135, 0.8); white-space: nowrap; }
         .match-timeline-node.is-goal .match-timeline-player { color: var(--accent-color); text-shadow: 0 0 4px rgba(0, 255, 135, 0.3); }
@@ -143,12 +143,12 @@
         .modal-header { text-align: center; margin-bottom: 20px; }
         .modal-teams { display: flex; justify-content: space-around; align-items: center; font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; }
         .modal-teams img { width: 35px; height: 35px; object-fit: contain; }
-        
+
         .timeline-wrapper { position: relative; margin: 25px 0 15px 0; padding: 15px 10px; overflow-x: auto; background: #161b22; border-radius: 8px; border: 1px solid var(--border-color); }
         .timeline-axis { position: absolute; top: 58px; left: 20px; right: 20px; height: 3px; background: var(--border-color); z-index: 1; }
         .timeline-nodes { display: flex; gap: 25px; position: relative; z-index: 2; padding: 0 10px; width: max-content; align-items: flex-start; }
         .timeline-node { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100px; flex-shrink: 0; }
-        
+
         .timeline-node.is-goal .timeline-player-img { border: 2px solid var(--accent-color); box-shadow: 0 0 12px rgba(0, 255, 135, 0.7); }
         .timeline-node.is-goal .timeline-badge-mini { background: var(--accent-color); color: #000; font-weight: bold; font-size: 0.7rem; width: auto; padding: 0 8px; border-radius: 10px; bottom: -4px; right: -15px; box-shadow: 0 0 8px rgba(0, 255, 135, 0.9); white-space: nowrap; }
         .timeline-node.is-goal .timeline-player { color: var(--accent-color); text-shadow: 0 0 6px rgba(0, 255, 135, 0.4); }
@@ -200,7 +200,7 @@
         <header>
             <h1>
                 <img src="https://media.api-sports.io/football/leagues/78.png" alt="1. Bundesliga Logo" style="height: 45px; width: 45px; object-fit: contain; vertical-align: middle;">
-1. Bundesliga
+                1. Bundesliga
             </h1>
             <div class="subtitle">Live, Team-Statistiken, Aufstellungen & Bestenlisten (Saison 2026/27)</div>
             <div class="author-sub">
@@ -248,7 +248,7 @@
                 <h2 id="matchdayTitle">Spieltag</h2>
                 <div id="matchesList">Lade Spiele...</div>
             </div>
-            
+
             <div class="card">
                 <h2>Tabelle <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(Klicke auf ein Team für Saisonstatistiken)</span></h2>
                 <div id="tableContainer">Lade Tabelle...</div>
@@ -320,7 +320,8 @@
         const SUPABASE_URL = 'https://lhusylpjnujlqomougmg.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_yXEueWILvAq-Vm2VfTuYyg_BIQeE1KK';
         const FINALS_DEDUP_TABLE = 'push_sent_events_buli';
-        
+        const FINALS_PREFIX = 'ft_buli';
+
         let supabaseClient = null;
         try {
             if (typeof supabase !== 'undefined' && supabase.createClient) {
@@ -340,7 +341,7 @@
         let globalTopScorers = [];
         let globalTopAssists = [];
         let globalYellowCards = [];
-        
+
         function safeGetStorage(key, fallback) {
             try {
                 const val = localStorage.getItem(key);
@@ -358,6 +359,8 @@
         let cachedTeamPlayersData = [];
         let fixtureDetailsCache = safeGetStorage('bl_fixture_details_cache', {});
         let isTickerVisible = safeGetStorage('bl_ticker_visible', true);
+        let sentFinalsCache = safeGetStorage('bl_sent_finals', {});
+        const processingFinals = new Set();
 
         function toggleTicker() {
             isTickerVisible = !isTickerVisible;
@@ -537,9 +540,9 @@
                     return;
                 }
                 const registration = await navigator.serviceWorker.register('./sw.js').catch(() => null);
-                
+
                 const publicVapidKey = 'BAsnfWgySLti5LzulXfN-xI-x7UDV32LO98YXgg1qdoRY1E1Tl05QPgCvOMgfwe80cSv_K7336-dhJTgBkHUI70';
-                
+
                 if (registration && registration.pushManager) {
                     const subscription = await registration.pushManager.subscribe({
                         userVisibleOnly: true,
@@ -571,6 +574,56 @@
             await registerPushSubscription("Supabase Endergebnis-Alarm erfolgreich aktiviert!");
         }
 
+        async function checkFinishedMatchAndNotify(fixtureId, statusShort, homeName, awayName, hScore, aScore) {
+            if (!['FT', 'AET', 'PEN'].includes(statusShort)) return;
+            if (hScore === null || hScore === undefined || aScore === null || aScore === undefined) return;
+
+            const eventKey = `${FINALS_PREFIX}_${fixtureId}_${hScore}:${aScore}`;
+            if (sentFinalsCache[eventKey] || processingFinals.has(eventKey)) return;
+
+            processingFinals.add(eventKey);
+            try {
+                if (supabaseClient) {
+                    const { data: existingRows, error: selectError } = await supabaseClient
+                        .from(FINALS_DEDUP_TABLE)
+                        .select('event_key')
+                        .eq('event_key', eventKey)
+                        .limit(1);
+
+                    if (!selectError && Array.isArray(existingRows) && existingRows.length > 0) {
+                        sentFinalsCache[eventKey] = true;
+                        try { localStorage.setItem('bl_sent_finals', JSON.stringify(sentFinalsCache)); } catch(e){}
+                        return;
+                    }
+
+                    const { error: insertError } = await supabaseClient
+                        .from(FINALS_DEDUP_TABLE)
+                        .insert([{ event_key: eventKey }]);
+
+                    if (insertError) return;
+
+                    await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            table: 'push_subscriptions_bayern',
+                            eventKey: eventKey,
+                            title: `🏁 Endergebnis (1. Bundesliga) ${hScore}:${aScore}`,
+                            body: `${homeName} : ${awayName}`
+                        })
+                    });
+                }
+
+                sentFinalsCache[eventKey] = true;
+                try { localStorage.setItem('bl_sent_finals', JSON.stringify(sentFinalsCache)); } catch(e){}
+            } catch (e) {
+                console.error("Fehler beim Endergebnis-Push:", e);
+            } finally {
+                processingFinals.delete(eventKey);
+            }
+        }
+
         const processingGoals = new Set();
 
         async function checkAllGoalsAndNotify(home, away, hScore, aScore, latestScorer, matchId, scoringTeam) {
@@ -580,7 +633,7 @@
             let cleanPlayer = latestScorer.replace(/⚽\s*/, '').replace(/\(\d+['']\)/, '').replace('(Pen)', '').replace('(ET)', '').trim();
             let minStr = latestScorer.match(/\(\d+['']\)/) ? ` ${latestScorer.match(/\(\d+['']\)/)[0]}` : '';
             let uniqueGoalId = `${matchId}_${hScore}:${aScore}`;
-            
+
             if (processingGoals.has(uniqueGoalId)) return;
 
             let goalObject = {
@@ -600,7 +653,7 @@
                 processingGoals.add(uniqueGoalId);
                 let { error: insertError } = await supabaseClient
                     .from('sent_goals_bl')
-                    .insert([{ 
+                    .insert([{
                         goal_id: uniqueGoalId,
                         match_id: matchId,
                         home_score: hScore,
@@ -664,9 +717,9 @@
             setTimeout(() => { hideGoalAlert(); }, 10000);
         }
 
-        function hideGoalAlert() { 
+        function hideGoalAlert() {
             const banner = document.getElementById("goalAlertBanner");
-            if (banner) banner.style.display = "none"; 
+            if (banner) banner.style.display = "none";
         }
 
         function manageSmartPolling(hasLiveGames) {
@@ -1014,15 +1067,15 @@
                 if(data.response && data.response.length > 0) {
                     currentMatchday = data.response[0];
                     select.value = currentMatchday;
-                } else if(select.options.length > 0) { 
-                    currentMatchday = select.options[0].value; 
+                } else if(select.options.length > 0) {
+                    currentMatchday = select.options[0].value;
                 }
                 loadMatchday(currentMatchday);
             } catch(e) {
                 const select = document.getElementById("matchdaySelect");
-                if(select.options.length > 0) { 
-                    currentMatchday = select.options[0].value; 
-                    loadMatchday(currentMatchday); 
+                if(select.options.length > 0) {
+                    currentMatchday = select.options[0].value;
+                    loadMatchday(currentMatchday);
                 }
             }
         }
@@ -1036,12 +1089,12 @@
             try {
                 const res = await fetch(`https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=${season}&round=${round}`, { headers: { "x-apisports-key": apiKey } });
                 const data = await res.json();
-                
+
                 if(data.response && data.response.length > 0) {
                     container.innerHTML = "";
                     let tickerHtml = "";
                     let hasLiveGames = false;
-                     
+
                     const matchPromises = data.response.map(async m => {
                         const fixtureId = m.fixture.id;
                         const isFinished = ['FT', 'AET', 'PEN'].includes(m.fixture.status.short);
@@ -1092,6 +1145,15 @@
                             try { localStorage.setItem('bl_previous_scores', JSON.stringify(previousScores)); } catch(e){}
                         }
 
+                        checkFinishedMatchAndNotify(
+                            fixtureId,
+                            m.fixture.status.short,
+                            home.name,
+                            away.name,
+                            m.goals.home,
+                            m.goals.away
+                        );
+
                         let latestScorer = "";
                         let scoringTeam = "";
                         if (events && events.length > 0) {
@@ -1114,7 +1176,7 @@
 
                         let matchTimelineHtml = "";
                         let relevantTimelineEvents = events.filter(ev => ['Goal', 'Card'].includes(ev.type));
-                        
+
                         if (relevantTimelineEvents.length > 0) {
                             matchTimelineHtml = `<div class="match-timeline-preview"><div class="match-timeline-axis"></div><div class="match-timeline-nodes">`;
                             let tH = 0, tA = 0;
@@ -1195,7 +1257,7 @@
                             ${scorersHtml}
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:6px; border-top:1px dashed var(--border-color);">
                                 <span style="font-size:0.75rem; color:var(--text-muted);">Spiel-ID: #${m.fixture.id}</span>
-                                <button onclick="event.stopPropagation(); openBetfairOdds(${m.fixture.id}, '${home.name.replace(/'/g, "\'")}', '${away.name.replace(/'/g, "\'")}')" style="background:#21262d; border:1px solid var(--border-color); color:var(--accent-color); padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer;">🎯 Betfair Quoten</button>
+                                <button onclick="event.stopPropagation(); openBetfairOdds(${m.fixture.id}, '${home.name.replace(/'/g, "\\'")}', '${away.name.replace(/'/g, "\\'")}')" style="background:#21262d; border:1px solid var(--border-color); color:var(--accent-color); padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer;">🎯 Betfair Quoten</button>
                             </div>
                         `;
                         container.appendChild(itemDiv);
@@ -1424,7 +1486,7 @@
                 if(data.response && data.response.length > 0) {
                     const standings = data.response[0].league.standings[0];
                     let html = `<table><tr><th>#</th><th>Team</th><th class="center">Sp</th><th class="center">S</th><th class="center">U</th><th class="center">N</th><th class="center">Tore</th><th class="center">Diff</th><th class="right">Pkt</th></tr>`;
-                    
+
                     let top3Html = "";
                     for(let i = 0; i < Math.min(3, standings.length); i++) {
                         let s = standings[i];
@@ -1438,7 +1500,7 @@
                         if (s.team.name.includes("Bayern")) zoneClass += " bayern-team";
                         let diffValue = s.goalsDiff !== undefined ? s.goalsDiff : (s.all.goals.for - s.all.goals.against);
                         let diffFormatted = diffValue > 0 ? '+' + diffValue : diffValue;
-                        
+
                         html += `<tr class="table-row ${zoneClass}" onclick="openTeamStats(${s.team.id}, '${s.team.name}', '${s.team.logo}')">
                             <td><b>${s.rank}</b></td>
                             <td><div class="table-team"><img src="${s.team.logo}"><span>${s.team.name}</span></div></td>
